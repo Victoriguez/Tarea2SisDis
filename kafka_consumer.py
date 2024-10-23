@@ -1,7 +1,8 @@
 from kafka import KafkaConsumer
 import json
 import time
-import elastic_manager  # Integra Elasticsearch
+import elastic_manager
+import email_service  # Servicio de notificaciones por email
 
 # Configuramos el consumidor Kafka
 consumer = KafkaConsumer(
@@ -17,6 +18,7 @@ def process_order_event(event):
     order_id = event['order_id']
     product_name = event['product_name']
     status = event['status']
+    customer_email = event['email']
 
     # Simular procesamiento del pedido
     print(f"Procesando pedido {order_id} - {product_name}")
@@ -27,6 +29,11 @@ def process_order_event(event):
 
     # Registrar métricas en Elasticsearch
     elastic_manager.store_performance_metrics(order_id, next_status)
+
+    # Enviar notificación por email
+    subject = f"Actualización de Pedido: {product_name}"
+    message = f"Su pedido con ID {order_id} ha sido actualizado al estado: {next_status}."
+    email_service.send_email(customer_email, subject, message)
 
 def update_order_status(order_id, current_status):
     states = ['Procesando', 'Preparación', 'Enviado', 'Entregado', 'Finalizado']
