@@ -6,8 +6,9 @@ def send_email(to_email, subject, message):
     # Configura tu servidor SMTP (puedes usar Gmail, por ejemplo)
     smtp_server = "smtp.gmail.com"
     smtp_port = 587
-    sender_email = "tucorreo@gmail.com"  # Reemplazar por tu correo
-    sender_password = "tu_password"  # Reemplazar por tu contraseña
+    sender_email = "rojoalacran8@gmail.com"  # Reemplazar por tu correo
+    sender_password = "yhoa zbwc opkg sgli"  # Reemplazar por tu contraseña
+
 
     # Crear el mensaje
     msg = MIMEMultipart()
@@ -29,4 +30,4 @@ def send_email(to_email, subject, message):
 
 # Prueba la función
 if __name__ == '__main__':
-    send_email("victor.rodriguez_p@mail.udp.cl", "Estado de Pedido", "Tu pedido ha sido enviado.")
+    send_email("cliente@ejemplo.com", "Estado de Pedido", "Tu pedido ha sido enviado.")
