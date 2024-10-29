@@ -1,53 +1,58 @@
-from kafka import KafkaConsumer
+from confluent_kafka import Consumer, KafkaError
 import json
 import time
 import elastic_manager
-import email_service  # Servicio de notificaciones por email
+import email_service
+from order_manager import OrderManager
 
-# Configuramos el consumidor Kafka
-consumer = KafkaConsumer(
-    'order-events',
-    bootstrap_servers=['localhost:9092'],
-    auto_offset_reset='earliest',
-    enable_auto_commit=True,
-    group_id='order-consumer-group',
-    value_deserializer=lambda m: json.loads(m.decode('utf-8'))
-)
+# Configura el consumidor
+consumer = Consumer({
+    'bootstrap.servers': 'localhost:9092',
+    'group.id': 'order-consumer-group',
+    'auto.offset.reset': 'earliest'
+})
+
+consumer.subscribe(['order-events'])
+
+# Instancia de OrderManager para manejar pedidos
+order_manager = OrderManager()
 
 def process_order_event(event):
     order_id = event['order_id']
-    product_name = event['product_name']
-    status = event['status']
-    customer_email = event['email']
+    order = order_manager.create_order(
+        product_name=event['product_name'],
+        price=event['price'],
+        payment_gateway=event['payment_gateway'],
+        card_brand=event['card_brand'],
+        bank=event['bank'],
+        region=event['region'],
+        address=event['address'],
+        email=event['email']
+    )
 
-    # Simular procesamiento del pedido
-    print(f"Procesando pedido {order_id} - {product_name}")
-    time.sleep(2)  # Simulamos un tiempo de procesamiento
-    
-    # Actualizar el estado del pedido
-    next_status = update_order_status(order_id, status)
-
-    # Registrar métricas en Elasticsearch
-    elastic_manager.store_performance_metrics(order_id, next_status)
-
-    # Enviar notificación por email
-    subject = f"Actualización de Pedido: {product_name}"
-    message = f"Su pedido con ID {order_id} ha sido actualizado al estado: {next_status}."
-    email_service.send_email(customer_email, subject, message)
-
-def update_order_status(order_id, current_status):
-    states = ['Procesando', 'Preparación', 'Enviado', 'Entregado', 'Finalizado']
-    if current_status in states:
-        next_status = states[states.index(current_status) + 1] if states.index(current_status) < len(states) - 1 else current_status
-        print(f"Actualizando estado del pedido {order_id} a {next_status}")
-        return next_status
-    return current_status
+    for _ in range(len(order_manager.states) - 1):
+        order_manager.simulate_processing_time()
+        order = order_manager.update_order_status(order)
+        elastic_manager.store_performance_metrics(order['order_id'], order['status'])
+        subject = f"Actualización de Pedido: {order['product_name']}"
+        message = f"Su pedido con ID {order['order_id']} ha sido actualizado al estado: {order['status']}."
+        email_service.send_email(order['email'], subject, message)
 
 def run_consumer():
-    print("Iniciando consumidor Kafka...")
-    for message in consumer:
-        event = json.loads(message.value)
-        process_order_event(event)
+    print("Iniciando consumidor confluent-Kafka...")
+    while True:
+        msg = consumer.poll(1.0)
+        if msg is None:
+            continue
+        if msg.error():
+            if msg.error().code() == KafkaError._PARTITION_EOF:
+                print("Fin de la partición")
+            elif msg.error():
+                print("Error del consumidor: {}".format(msg.error()))
+                break
+        else:
+            event = json.loads(msg.value().decode('utf-8'))
+            process_order_event(event)
 
 if __name__ == '__main__':
     run_consumer()

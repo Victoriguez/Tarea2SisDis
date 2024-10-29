@@ -2,7 +2,7 @@ from elasticsearch import Elasticsearch
 from datetime import datetime
 
 # Conexión a Elasticsearch
-es = Elasticsearch([{'host': 'localhost', 'port': 9200}])
+es = Elasticsearch([{'host': 'localhost', 'port': 9200, 'scheme': 'http'}])
 
 def store_performance_metrics(order_id, status):
     doc = {

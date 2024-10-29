@@ -1,10 +1,16 @@
-from kafka import KafkaProducer
+from confluent_kafka import Producer
 import json
 
-producer = KafkaProducer(
-    bootstrap_servers=['localhost:9092'],
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
-)
+# Configura el productor
+producer = Producer({
+    'bootstrap.servers': 'localhost:9092'  # Añade aquí la IP o dominio de tu servidor Kafka
+})
+
+def delivery_report(err, msg):
+    if err is not None:
+        print(f"Fallo al entregar el mensaje: {err}")
+    else:
+        print(f"Mensaje entregado a {msg.topic()} [{msg.partition()}]")
 
 def publish_order_event(order_id, order_request):
     event_data = {
@@ -19,7 +25,5 @@ def publish_order_event(order_id, order_request):
         'email': order_request.email,
         'status': 'Procesando'
     }
-    producer.send('order-events', event_data)
+    producer.produce('order-events', key=str(order_id), value=json.dumps(event_data), callback=delivery_report)
     producer.flush()
-    print(f"Evento publicado para el pedido {order_id}")
-
