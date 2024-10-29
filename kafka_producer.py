@@ -3,7 +3,7 @@ import json
 
 # Configura el productor
 producer = Producer({
-    'bootstrap.servers': 'localhost:9092'  # Añade aquí la IP o dominio de tu servidor Kafka
+    'bootstrap.servers': 'localhost:9092'  
 })
 
 def delivery_report(err, msg):
